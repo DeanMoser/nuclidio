@@ -31,7 +31,6 @@ class PlayerToken(object):
     def __init__(self):
         self.atomic_num = 1
         self.isotope_num = 1
-        self.draw_token()
 
     def draw_token(self):
         x_coord = self.isotope_num * CARD_SIZE
@@ -41,9 +40,9 @@ class PlayerToken(object):
 
     def add_nuetron(self):
         self.isotope_num += 1
-        if IsotopeCard(self.atomic_num, self.isotope_num) not in ELEMS:
-            self.isotope_num -= 1
-            self.atomic_num += 1
+        # if IsotopeCard(self.atomic_num, self.isotope_num) not in ELEMS:
+        #     self.isotope_num -= 1
+        #     self.atomic_num += 1
         self.draw_token()
 
 
@@ -58,15 +57,23 @@ def create_elems():
 
 # PYGAME STATE MACHINE --------------------------------------------------------
 create_elems()
+player = PlayerToken()
 while True:
     for event in pygame.event.get():
         # Detect quit
         if event.type == pygame.QUIT:
             pygame.quit()
+        # Detect input
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_s:
+                player.add_nuetron()
+
+    # Draw background
+    pygame.draw.rect(DISPLAY, (0, 0, 0), pygame.Rect(0, 0, SCREEN_X, SCREEN_Y))
 
     # Draw cards
     for elem in ELEMS:
         elem.draw_card()
-    PlayerToken()
+    player.draw_token()
 
     pygame.display.flip()
