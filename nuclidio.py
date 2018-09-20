@@ -1,18 +1,19 @@
 import pygame
 import numpy as np
 
-# SETTINGS
+# SETTINGS  -------------------------------------------------------------------
 SCREEN_X = 1280
 SCREEN_Y = 720
 CARD_SIZE = 64
 
-# INIT
+# PYGAME INIT -----------------------------------------------------------------
 pygame.init()
 SCREEN = (SCREEN_X, SCREEN_Y)
 DISPLAY = pygame.display.set_mode(SCREEN)
 ELEMS = []
 
 
+# CLASSES ---------------------------------------------------------------------
 class IsotopeCard(object):
     def __init__(self, atomic_num, isotope_num):
         self.atomic_num = atomic_num
@@ -42,16 +43,21 @@ class PlayerToken(object):
         self.isotope_num += 1
         if IsotopeCard(self.atomic_num, self.isotope_num) not in ELEMS:
             self.isotope_num -= 1
-            self.atomic_num =+ 1
+            self.atomic_num += 1
         self.draw_token()
 
 
+# FUNCTIONS -------------------------------------------------------------------
 # sample card locations
-## TODO: csv parse for element information
-for i in range(1, 3):
-    for j in range(i, i + 4):
-        ELEMS.append(IsotopeCard(atomic_num=i, isotope_num=j))
+def create_elems():
+    ## TODO: csv parse for element information
+    for i in range(1, 3):
+        for j in range(i, i + 4):
+            ELEMS.append(IsotopeCard(atomic_num=i, isotope_num=j))
 
+
+# PYGAME STATE MACHINE --------------------------------------------------------
+create_elems()
 while True:
     for event in pygame.event.get():
         # Detect quit
