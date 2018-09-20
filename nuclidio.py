@@ -5,6 +5,8 @@ import numpy as np
 SCREEN_X = 1280
 SCREEN_Y = 720
 CARD_SIZE = 64
+KEY_RIGHT = pygame.K_RIGHT
+KEY_UP = pygame.K_UP
 
 # PYGAME INIT -----------------------------------------------------------------
 pygame.init()
@@ -46,14 +48,23 @@ class PlayerToken(object):
             self.atomic_num += 1
         self.draw_token()
 
+    def add_proton(self):
+        self.atomic_num += 1
+        elem_vals = [(elem.atomic_num, elem.isotope_num) for elem in ELEMS]
+        if (self.atomic_num, self.isotope_num) not in elem_vals:
+            self.atomic_num -= 1
+            self.isotope_num += 1
+        self.draw_token()
+
 
 # FUNCTIONS -------------------------------------------------------------------
 # sample card locations
 def create_elems():
     ## TODO: csv parse for element information
-    for i in range(1, 3):
-        for j in range(i, i + 4):
-            ELEMS.append(IsotopeCard(atomic_num=i, isotope_num=j))
+    temp_cards = ((1, (1, 2, 3, 4)), (2, (2, 3, 4, 5, 6)), (3, (3, 5, 6, 7, 8)))
+    for atomic_num, isotopes in temp_cards:
+        for isotope_num in isotopes:
+            ELEMS.append(IsotopeCard(atomic_num, isotope_num))
 
 
 # PYGAME STATE MACHINE --------------------------------------------------------
@@ -66,8 +77,10 @@ while True:
             pygame.quit()
         # Detect input
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_s:
+            if event.key == KEY_RIGHT:
                 player.add_nuetron()
+            if event.key == KEY_UP:
+                player.add_proton()
 
     # Draw background
     pygame.draw.rect(DISPLAY, (0, 0, 0), pygame.Rect(0, 0, SCREEN_X, SCREEN_Y))
