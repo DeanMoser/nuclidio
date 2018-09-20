@@ -29,7 +29,9 @@ while True:
     for i in range(ELEMS):
         for j in range(ISOTOPES):
             if CARD_GRID[i, j]:
-                rect = pygame.Rect(j * CARD_SIZE, SCREEN_Y - (i * CARD_SIZE), CARD_SIZE, CARD_SIZE)
-                pygame.draw.rect(DISPLAY, (255, 255, 255), rect)
+                rect = pygame.Rect(j * CARD_SIZE, SCREEN_Y - ((i + 1) * CARD_SIZE), CARD_SIZE, CARD_SIZE)
+                rect.inflate(-2, -2)
+                pygame.draw.rect(DISPLAY, (255, 255, 255), rect, 0)
+                pygame.draw.rect(DISPLAY, (0, 0, 0), rect, 1)
 
     pygame.display.flip()
