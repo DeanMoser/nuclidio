@@ -1,12 +1,23 @@
 import pygame
-import numpy as np
+# import numpy as np
 
 # SETTINGS  -------------------------------------------------------------------
+DEBUG = True
+
 SCREEN_X = 1280
-SCREEN_Y = 720
+SCREEN_Y = 768
 CARD_SIZE = 64
+# CONTROLS
 KEY_RIGHT = pygame.K_RIGHT
 KEY_UP = pygame.K_UP
+KEY_FORCE_BM_DECAY = pygame.K_m
+KEY_FORCE_BP_DECAY = pygame.K_p
+KEY_FORCE_A_DECAY = pygame.K_a
+# COLORS
+COLOR_WHITE = (255, 255, 255)
+COLOR_BLACK = (0, 0, 0)
+COLOR_HIGHLIGHT = (255, 63, 63)
+
 
 # PYGAME INIT -----------------------------------------------------------------
 pygame.init()
@@ -20,13 +31,14 @@ class IsotopeCard(object):
     def __init__(self, atomic_num, isotope_num):
         self.atomic_num = atomic_num
         self.isotope_num = isotope_num
+        self.stable = True
 
     def draw_card(self):
         x_coord = self.isotope_num * CARD_SIZE
         y_coord = SCREEN_Y - ((self.atomic_num + 1) * CARD_SIZE)
         rect = pygame.Rect(x_coord, y_coord, CARD_SIZE, CARD_SIZE)
-        pygame.draw.rect(DISPLAY, (255, 255, 255), rect, 0)
-        pygame.draw.rect(DISPLAY, (0, 0, 0), rect, 1)
+        pygame.draw.rect(DISPLAY, COLOR_WHITE, rect, 0)
+        pygame.draw.rect(DISPLAY, COLOR_BLACK, rect, 1)
 
 
 class PlayerToken(object):
@@ -38,23 +50,33 @@ class PlayerToken(object):
         x_coord = self.isotope_num * CARD_SIZE
         y_coord = SCREEN_Y - ((self.atomic_num + 1) * CARD_SIZE)
         rect = pygame.Rect(x_coord, y_coord, CARD_SIZE, CARD_SIZE)
-        pygame.draw.rect(DISPLAY, (255, 63, 63), rect, 5)
+        pygame.draw.rect(DISPLAY, COLOR_HIGHLIGHT, rect, 5)
 
     def add_nuetron(self):
         self.isotope_num += 1
         elem_vals = [(elem.atomic_num, elem.isotope_num) for elem in ELEMS]
         if (self.atomic_num, self.isotope_num) not in elem_vals:
-            self.isotope_num -= 1
-            self.atomic_num += 1
+            self.beta_minus_decay()
         self.draw_token()
 
     def add_proton(self):
         self.atomic_num += 1
         elem_vals = [(elem.atomic_num, elem.isotope_num) for elem in ELEMS]
         if (self.atomic_num, self.isotope_num) not in elem_vals:
-            self.atomic_num -= 1
-            self.isotope_num += 1
+            self.beta_plus_decay()
         self.draw_token()
+
+    def beta_minus_decay(self):
+        self.isotope_num -= 1
+        self.atomic_num += 1
+
+    def beta_plus_decay(self):
+        self.atomic_num -= 1
+        self.isotope_num += 1
+
+    def alpha_decay(self):
+        self.atomic_num -= 2
+        self.isotope_num -= 2
 
 
 # FUNCTIONS -------------------------------------------------------------------
@@ -71,6 +93,7 @@ def create_elems():
 create_elems()
 player = PlayerToken()
 while True:
+    # Event listener
     for event in pygame.event.get():
         # Detect quit
         if event.type == pygame.QUIT:
@@ -81,13 +104,24 @@ while True:
                 player.add_nuetron()
             if event.key == KEY_UP:
                 player.add_proton()
+            # DEBUG ops
+            if DEBUG:
+                if event.key == KEY_FORCE_BM_DECAY:
+                    player.beta_minus_decay()
+                if event.key == KEY_FORCE_BP_DECAY:
+                    player.beta_plus_decay()
+                if event.key == KEY_FORCE_A_DECAY:
+                    player.alpha_decay()
+
 
     # Draw background
-    pygame.draw.rect(DISPLAY, (0, 0, 0), pygame.Rect(0, 0, SCREEN_X, SCREEN_Y))
+    pygame.draw.rect(DISPLAY, COLOR_BLACK, pygame.Rect(0, 0, SCREEN_X, SCREEN_Y))
 
     # Draw cards
     for elem in ELEMS:
         elem.draw_card()
+
+    # Draw player
     player.draw_token()
 
     pygame.display.flip()
