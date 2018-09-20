@@ -40,9 +40,10 @@ class PlayerToken(object):
 
     def add_nuetron(self):
         self.isotope_num += 1
-        # if IsotopeCard(self.atomic_num, self.isotope_num) not in ELEMS:
-        #     self.isotope_num -= 1
-        #     self.atomic_num += 1
+        elem_vals = [(elem.atomic_num, elem.isotope_num) for elem in ELEMS]
+        if (self.atomic_num, self.isotope_num) not in elem_vals:
+            self.isotope_num -= 1
+            self.atomic_num += 1
         self.draw_token()
 
 
