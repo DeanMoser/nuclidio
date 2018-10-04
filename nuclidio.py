@@ -1,5 +1,5 @@
 import pygame
-# import numpy as np
+import numpy as np
 
 # SETTINGS  -------------------------------------------------------------------
 DEBUG = True
@@ -28,10 +28,28 @@ ELEMS = []
 
 # CLASSES ---------------------------------------------------------------------
 class IsotopeCard(object):
-    def __init__(self, atomic_num, isotope_num):
+    """Logical board object for a given element isotope, to be rendered onto the chart of the nuclides,
+    and for the player token to navigate between based on instability probabilities.
+
+    Parameters
+    ----------
+    atomic_num : int
+        atomic number of desired element, to be used to determine x-coordinate of card
+    isotope_num : int
+        isotope number for desired element, to be used to determine y-coordinate of card
+    probabilities : float[3]
+        3 floats between 0 and 1 that determine how likely beta-minus, beta-plus, and alpha decay are respectively
+
+    """
+    def __init__(self, atomic_num, isotope_num, probabilities=None):
         self.atomic_num = atomic_num
         self.isotope_num = isotope_num
-        self.stable = True
+        if probabilities is None:
+            self.stable = True
+            self.bm_prob, self.bp_prob, self.a_prob = 0.0, 0.0, 0.0
+        else:
+            self.stable = False
+            self.bm_prob, self.bp_prob, self.a_prob = probabilities[0], probabilities[1], probabilities[2]
 
     def draw_card(self):
         x_coord = self.isotope_num * CARD_SIZE
@@ -51,6 +69,26 @@ class PlayerToken(object):
         y_coord = SCREEN_Y - ((self.atomic_num + 1) * CARD_SIZE)
         rect = pygame.Rect(x_coord, y_coord, CARD_SIZE, CARD_SIZE)
         pygame.draw.rect(DISPLAY, COLOR_HIGHLIGHT, rect, 5)
+
+    def query_stability(self):
+        this_elem = None
+        for elem in ELEMS:
+            if (elem.atomic_num == self.atomic_num) and (elem.isotope_num == self.isotope_num):
+                this_elem = elem
+                break
+        if not this_elem.stable:
+            prob = np.random.random()
+            elem_probs = [this_elem.bm_prob, this_elem.bp_prob, this_elem.a_prob]
+            iter = 0
+            ## TODO: some things with probabilities
+            while prob >= elem_probs[iter]:
+                iter += 1
+            if iter == 0:
+                pass
+            elif iter == 1:
+                pass
+            elif iter == 2:
+                pass
 
     def add_nuetron(self):
         self.isotope_num += 1
@@ -79,21 +117,24 @@ class PlayerToken(object):
         self.isotope_num -= 2
 
 
+class PlaySession(object):
+    def __init__(self):
+        self.start()
+
+    def start(self):
+        self.create_elems()
+        self.player = PlayerToken()
+
+    # sample card locations
+    def create_elems(self):
+        ## TODO: csv parse for element information
+        temp_cards = ((1, (1, 2, 3, 4)), (2, (2, 3, 4, 5, 6)), (3, (3, 5, 6, 7, 8)))
+        for atomic_num, isotopes in temp_cards:
+            for isotope_num in isotopes:
+                ELEMS.append(IsotopeCard(atomic_num, isotope_num))
+
 # FUNCTIONS -------------------------------------------------------------------
-# sample card locations
-def create_elems():
-    ## TODO: csv parse for element information
-    temp_cards = ((1, (1, 2, 3, 4)), (2, (2, 3, 4, 5, 6)), (3, (3, 5, 6, 7, 8)))
-    for atomic_num, isotopes in temp_cards:
-        for isotope_num in isotopes:
-            ELEMS.append(IsotopeCard(atomic_num, isotope_num))
-
-
-# PYGAME STATE MACHINE --------------------------------------------------------
-create_elems()
-player = PlayerToken()
-while True:
-    # Event listener
+def event_listen():
     for event in pygame.event.get():
         # Detect quit
         if event.type == pygame.QUIT:
@@ -101,18 +142,24 @@ while True:
         # Detect input
         if event.type == pygame.KEYDOWN:
             if event.key == KEY_RIGHT:
-                player.add_nuetron()
+                session.player.add_nuetron()
             if event.key == KEY_UP:
-                player.add_proton()
+                session.player.add_proton()
             # DEBUG ops
             if DEBUG:
                 if event.key == KEY_FORCE_BM_DECAY:
-                    player.beta_minus_decay()
+                    session.player.beta_minus_decay()
                 if event.key == KEY_FORCE_BP_DECAY:
-                    player.beta_plus_decay()
+                    session.player.beta_plus_decay()
                 if event.key == KEY_FORCE_A_DECAY:
-                    player.alpha_decay()
+                    session.player.alpha_decay()
 
+
+# PYGAME STATE MACHINE --------------------------------------------------------
+session = PlaySession()
+while True:
+    # Event listener
+    event_listen()
 
     # Draw background
     pygame.draw.rect(DISPLAY, COLOR_BLACK, pygame.Rect(0, 0, SCREEN_X, SCREEN_Y))
@@ -122,6 +169,6 @@ while True:
         elem.draw_card()
 
     # Draw player
-    player.draw_token()
+    session.player.draw_token()
 
     pygame.display.flip()
