@@ -15,15 +15,24 @@ KEY_FORCE_BP_DECAY = pygame.K_p
 KEY_FORCE_A_DECAY = pygame.K_a
 # COLORS
 COLOR_WHITE = (255, 255, 255)
+COLOR_GREY = (200, 200, 200)
 COLOR_BLACK = (0, 0, 0)
 COLOR_HIGHLIGHT = (255, 63, 63)
+# FONTS
+pygame.font.init()
+FONT_TITLE = pygame.font.SysFont('DejaVu Sans', 24)
+FONT_MENU = pygame.font.SysFont('DejaVu Sans', 16)
+FONT_CARD_P = pygame.font.SysFont('DejaVu Sans', 20)
+FONT_CARD_S = pygame.font.SysFont('DejaVu Sans', 14)
+# FILES
+FILE_NUCLIDES = 'nuclides.csv'
+FILE_ELEMENTS = 'elements.csv'
 
 
 # PYGAME INIT -----------------------------------------------------------------
 pygame.init()
 SCREEN = (SCREEN_X, SCREEN_Y)
 DISPLAY = pygame.display.set_mode(SCREEN)
-ELEMS = []
 
 
 # CLASSES ---------------------------------------------------------------------
@@ -41,78 +50,152 @@ class IsotopeCard(object):
         3 floats between 0 and 1 that determine how likely beta-minus, beta-plus, and alpha decay are respectively
 
     """
-    def __init__(self, atomic_num, isotope_num, probabilities=None):
+    def __init__(self, atomic_num, isotope_num, label='', probabilities=(0.0, 0.0, 0.0)):
         self.atomic_num = atomic_num
         self.isotope_num = isotope_num
-        if probabilities is None:
-            self.stable = True
-            self.bm_prob, self.bp_prob, self.a_prob = 0.0, 0.0, 0.0
-        else:
-            self.stable = False
-            self.bm_prob, self.bp_prob, self.a_prob = probabilities[0], probabilities[1], probabilities[2]
+        self.label = label
+        self.bm_prob, self.bp_prob, self.a_prob = probabilities[0], probabilities[1], probabilities[2]
+        self.stable = True if probabilities == (0.0, 0.0, 0.0) else False
 
     def draw_card(self):
+        """Render a rectangular 'board piece' for this logical item, depending on its atomic and isotope ids.
+
+        """
         x_coord = self.isotope_num * CARD_SIZE
         y_coord = SCREEN_Y - ((self.atomic_num + 1) * CARD_SIZE)
         rect = pygame.Rect(x_coord, y_coord, CARD_SIZE, CARD_SIZE)
-        pygame.draw.rect(DISPLAY, COLOR_WHITE, rect, 0)
+        fill_color = COLOR_WHITE if self.stable else COLOR_GREY
+        pygame.draw.rect(DISPLAY, fill_color, rect, 0)
         pygame.draw.rect(DISPLAY, COLOR_BLACK, rect, 1)
 
 
+class IsotopeContainer(object):
+    def __init__(self):
+        self.isotope_cards = []
+        self.gen_cards()
+
+    def gen_cards(self):
+        with open(FILE_ELEMENTS, 'r') as FILE:
+            label_dict = {}
+            for line in FILE.readlines():
+                # EXPECTED FORMAT:
+                #   atomic_number,label
+                tokens = line.split(',')
+                label_dict[int(tokens[0])] = tokens[1]
+
+        with open(FILE_NUCLIDES, 'r') as FILE:
+            for line in FILE.readlines():
+                # EXPECTED FORMAT:
+                #   atomic_number,isotope,stable,bm_decay,bp_decay,a_decay
+                if line[0] is '#':
+                    continue
+                tokens = line.split(',')
+                atomic_num = int(tokens[0])
+                isotope_num = int(tokens[1])
+                ## TODO: swap proabilities with file vals
+                probabilities = (0.0, 0.0, 0.0) if int(tokens[2]) is 1 else (0.33, 0.33, 0.33)
+                self.isotope_cards.append(IsotopeCard(atomic_num, isotope_num, label_dict[atomic_num], probabilities))
+
+    def draw_cards(self):
+        for card in self.isotope_cards:
+            card.draw_card()
+
+    def find(self, atomic_num, isotope_num):
+        for card in self.isotope_cards:
+            if (card.atomic_num == atomic_num) and (card.isotope_num == isotope_num):
+                return card
+        return None
+
+
 class PlayerToken(object):
+    """Logical object for player token. The player is able to navigate over several element cards
+    via subatomic processes. The player will be bounced back to other elements via radioactive decay.
+
+    """
     def __init__(self):
         self.atomic_num = 1
         self.isotope_num = 1
 
     def draw_token(self):
+        """Render colored outline above the current elem card to indicate player location.
+
+        """
         x_coord = self.isotope_num * CARD_SIZE
         y_coord = SCREEN_Y - ((self.atomic_num + 1) * CARD_SIZE)
         rect = pygame.Rect(x_coord, y_coord, CARD_SIZE, CARD_SIZE)
         pygame.draw.rect(DISPLAY, COLOR_HIGHLIGHT, rect, 5)
 
-    def query_stability(self):
-        this_elem = None
-        for elem in ELEMS:
-            if (elem.atomic_num == self.atomic_num) and (elem.isotope_num == self.isotope_num):
-                this_elem = elem
-                break
-        if not this_elem.stable:
-            prob = np.random.random()
-            elem_probs = [this_elem.bm_prob, this_elem.bp_prob, this_elem.a_prob]
-            iter = 0
-            ## TODO: some things with probabilities
-            while prob >= elem_probs[iter]:
-                iter += 1
-            if iter == 0:
-                pass
-            elif iter == 1:
-                pass
-            elif iter == 2:
-                pass
+    # def query_stability(self):
+    #     """Query the current element card to determine which kind, if any, of radioactive decay is likely to occur.
+    #     Determine which of these does occur and move the player. To be called after a player move.
+
+    #     """
+    #     this_elem = None
+    #     for elem in ISOTOPE_CONTAINER:
+    #         if (elem.atomic_num == self.atomic_num) and (elem.isotope_num == self.isotope_num):
+    #             this_elem = elem
+    #             break
+    #     if not this_elem.stable:
+    #         prob = np.random.random()
+    #         elem_probs = [this_elem.bm_prob, this_elem.bp_prob, this_elem.a_prob]
+    #         iter = 0
+    #         ## TODO: some things with probabilities
+    #         while prob >= elem_probs[iter]:
+    #             iter += 1
+    #         if iter == 0:
+    #             pass
+    #         elif iter == 1:
+    #             pass
+    #         elif iter == 2:
+    #             pass
 
     def add_nuetron(self):
+        """Nuetron bombardment results in increasing the isotope, thereby moving 'right' on the board.
+
+        """
         self.isotope_num += 1
-        elem_vals = [(elem.atomic_num, elem.isotope_num) for elem in ELEMS]
-        if (self.atomic_num, self.isotope_num) not in elem_vals:
+        ## TODO: do this boy
+        card = ISOTOPE_CONTAINER.find(self.atomic_num, self.isotope_num)
+        if card is None:
+            self.beta_minus_decay()
+        elif not card.stable:
             self.beta_minus_decay()
         self.draw_token()
 
     def add_proton(self):
+        """Proton bombardment results in increasing the atomic number, thereby moving 'up' on the board.
+
+        """
         self.atomic_num += 1
-        elem_vals = [(elem.atomic_num, elem.isotope_num) for elem in ELEMS]
-        if (self.atomic_num, self.isotope_num) not in elem_vals:
+        ## TODO: don't do this boy
+        card = ISOTOPE_CONTAINER.find(self.atomic_num, self.isotope_num)
+        if card is None:
+            self.beta_plus_decay()
+        elif not card.stable:
             self.beta_plus_decay()
         self.draw_token()
 
     def beta_minus_decay(self):
+        """Beta minus decay is the emission of an electron, thereby converting one nuetron
+        to a proton, and moving the player 'up and left' on the board.
+
+        """
         self.isotope_num -= 1
         self.atomic_num += 1
 
     def beta_plus_decay(self):
+        """Beta plus decay is the emission of a positron, thereby converting one proton
+        to a nuetron, and moving the player 'down and right' on the board.
+
+        """
         self.atomic_num -= 1
         self.isotope_num += 1
 
     def alpha_decay(self):
+        """Alpha decay is the emission of a Helium nucleus, thereby and moving the player
+        'down 2x and left 2x' on the board.
+
+        """
         self.atomic_num -= 2
         self.isotope_num -= 2
 
@@ -121,17 +204,26 @@ class PlaySession(object):
     def __init__(self):
         self.start()
 
+    # def menu(self):
+    #     title = FONT_TITLE.render(u'NUCLID.IO', 1, COLOR_WHITE)
+    #     DISPLAY.blit(title, (0, 0))
+
     def start(self):
-        self.create_elems()
+        # self.create_elems()
         self.player = PlayerToken()
 
-    # sample card locations
-    def create_elems(self):
-        ## TODO: csv parse for element information
-        temp_cards = ((1, (1, 2, 3, 4)), (2, (2, 3, 4, 5, 6)), (3, (3, 5, 6, 7, 8)))
-        for atomic_num, isotopes in temp_cards:
-            for isotope_num in isotopes:
-                ELEMS.append(IsotopeCard(atomic_num, isotope_num))
+    def draw_session(self):
+        # Draw background
+        pygame.draw.rect(DISPLAY, COLOR_BLACK, pygame.Rect(0, 0, SCREEN_X, SCREEN_Y))
+
+        # Draw cards
+        ISOTOPE_CONTAINER.draw_cards()
+
+        # Draw player
+        self.player.draw_token()
+
+        pygame.display.flip()
+
 
 # FUNCTIONS -------------------------------------------------------------------
 def event_listen():
@@ -142,33 +234,25 @@ def event_listen():
         # Detect input
         if event.type == pygame.KEYDOWN:
             if event.key == KEY_RIGHT:
-                session.player.add_nuetron()
+                SESSION.player.add_nuetron()
             if event.key == KEY_UP:
-                session.player.add_proton()
+                SESSION.player.add_proton()
             # DEBUG ops
             if DEBUG:
                 if event.key == KEY_FORCE_BM_DECAY:
-                    session.player.beta_minus_decay()
+                    SESSION.player.beta_minus_decay()
                 if event.key == KEY_FORCE_BP_DECAY:
-                    session.player.beta_plus_decay()
+                    SESSION.player.beta_plus_decay()
                 if event.key == KEY_FORCE_A_DECAY:
-                    session.player.alpha_decay()
+                    SESSION.player.alpha_decay()
 
 
 # PYGAME STATE MACHINE --------------------------------------------------------
-session = PlaySession()
+ISOTOPE_CONTAINER = IsotopeContainer()
+SESSION = PlaySession()
 while True:
     # Event listener
     event_listen()
 
-    # Draw background
-    pygame.draw.rect(DISPLAY, COLOR_BLACK, pygame.Rect(0, 0, SCREEN_X, SCREEN_Y))
-
-    # Draw cards
-    for elem in ELEMS:
-        elem.draw_card()
-
-    # Draw player
-    session.player.draw_token()
-
-    pygame.display.flip()
+    # Draw
+    SESSION.draw_session()
