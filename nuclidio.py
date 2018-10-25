@@ -15,7 +15,7 @@ KEY_FORCE_BM_DECAY = pygame.K_m
 KEY_FORCE_BP_DECAY = pygame.K_p
 KEY_FORCE_A_DECAY = pygame.K_a
 KEY_FORCE_RESTART = pygame.K_r
-KEY_FORCE_SAFE = pygame.K_s
+KEY_FORCE_TOGGLE_SAFE = pygame.K_s
 # COLORS
 COLOR_WHITE = (255, 255, 255)
 COLOR_GREY = (200, 200, 200)
@@ -275,8 +275,8 @@ def event_listen():
                     SESSION.player.atomic_num = 1
                     SESSION.player.isotope_num = 1
                     SESSION.player.safe = True
-                elif event.key == KEY_FORCE_SAFE:
-                    SESSION.player.safe = True
+                elif event.key == KEY_FORCE_TOGGLE_SAFE:
+                    SESSION.player.safe = not SESSION.player.safe
 
 
 # PYGAME STATE MACHINE --------------------------------------------------------
