@@ -14,11 +14,14 @@ KEY_UP = pygame.K_UP
 KEY_FORCE_BM_DECAY = pygame.K_m
 KEY_FORCE_BP_DECAY = pygame.K_p
 KEY_FORCE_A_DECAY = pygame.K_a
+KEY_FORCE_RESTART = pygame.K_r
 # COLORS
 COLOR_WHITE = (255, 255, 255)
 COLOR_GREY = (200, 200, 200)
 COLOR_BLACK = (0, 0, 0)
-COLOR_HIGHLIGHT = (255, 63, 63)
+# COLOR_HIGHLIGHT = (255, 63, 63)
+COLOR_TOKEN_SAFE = (0, 180, 255)
+COLOR_TOKEN_UNSAFE = (200, 0, 0)
 # FONTS
 pygame.font.init()
 FONT_TITLE = pygame.font.SysFont('DejaVu Sans', 36)
@@ -99,7 +102,7 @@ class IsotopeContainer(object):
                 atomic_num = int(tokens[0])
                 isotope_num = int(tokens[1])
                 ## TODO: swap proabilities with file vals
-                probabilities = (0.0, 0.0, 0.0) if int(tokens[2]) is 1 else (0.33, 0.33, 0.33)
+                probabilities = (0.0, 0.0, 0.0) if int(tokens[2]) is 1 else (0.25, 0.25, 0.25)
                 self.isotope_cards.append(IsotopeCard(atomic_num, isotope_num,
                                                       label_dict[atomic_num].strip(), probabilities))
 
@@ -122,39 +125,47 @@ class PlayerToken(object):
     def __init__(self):
         self.atomic_num = 1
         self.isotope_num = 1
+        self.safe = True
 
     def draw_token(self):
         """Render colored outline above the current elem card to indicate player location.
 
         """
+        token_color = COLOR_TOKEN_SAFE if self.safe else COLOR_TOKEN_UNSAFE
         x_coord = self.isotope_num * CARD_SIZE
         y_coord = SCREEN_Y - ((self.atomic_num + 1) * CARD_SIZE)
         rect = pygame.Rect(x_coord, y_coord, CARD_SIZE, CARD_SIZE)
-        pygame.draw.rect(DISPLAY, COLOR_HIGHLIGHT, rect, 5)
+        pygame.draw.rect(DISPLAY, token_color, rect, 5)
 
-    # def query_stability(self):
-    #     """Query the current element card to determine which kind, if any, of radioactive decay is likely to occur.
-    #     Determine which of these does occur and move the player. To be called after a player move.
+    def query_stability(self):
+        """Query the current element card to determine which kind, if any, of radioactive decay is likely to occur.
+        Determine which of these does occur and move the player. To be called after a player move.
 
-    #     """
-    #     this_elem = None
-    #     for elem in ISOTOPE_CONTAINER:
-    #         if (elem.atomic_num == self.atomic_num) and (elem.isotope_num == self.isotope_num):
-    #             this_elem = elem
-    #             break
-    #     if not this_elem.stable:
-    #         prob = np.random.random()
-    #         elem_probs = [this_elem.bm_prob, this_elem.bp_prob, this_elem.a_prob]
-    #         iter = 0
-    #         ## TODO: some things with probabilities
-    #         while prob >= elem_probs[iter]:
-    #             iter += 1
-    #         if iter == 0:
-    #             pass
-    #         elif iter == 1:
-    #             pass
-    #         elif iter == 2:
-    #             pass
+        """
+        this_elem = ISOTOPE_CONTAINER.find(self.atomic_num, self.isotope_num)
+        if this_elem is not None and not this_elem.stable:
+            prob = np.random.random()
+            prob_windows = [this_elem.bm_prob,
+                            this_elem.bm_prob + this_elem.bp_prob,
+                            this_elem.bm_prob + this_elem.bp_prob + this_elem.a_prob,
+                            1.0]
+            iter = 0
+            while prob >= prob_windows[iter]:
+                iter += 1
+            # print(iter)
+            # print(prob, prob_windows)
+            ## TODO: render intermediate unstable location with unsafe color for small time
+            self.safe = False
+            pygame.time.wait(500)
+            if iter == 0:
+                self.beta_minus_decay()
+            elif iter == 1:
+                self.beta_plus_decay()
+            elif iter == 2:
+                self.alpha_decay()
+            else:
+                print('safe')
+            self.safe = True
 
     def add_nuetron(self):
         """Nuetron bombardment results in increasing the isotope, thereby moving 'right' on the board.
@@ -162,9 +173,10 @@ class PlayerToken(object):
         """
         self.isotope_num += 1
         card = ISOTOPE_CONTAINER.find(self.atomic_num, self.isotope_num)
-        if card is None or not card.stable:
-            self.beta_minus_decay()
-        self.draw_token()
+        if card is None:
+            self.isotope_num -= 1
+        elif not card.stable:
+            self.query_stability()
 
     def add_proton(self):
         """Proton bombardment results in increasing the atomic number, thereby moving 'up' on the board.
@@ -172,9 +184,10 @@ class PlayerToken(object):
         """
         self.atomic_num += 1
         card = ISOTOPE_CONTAINER.find(self.atomic_num, self.isotope_num)
-        if card is None or not card.stable:
-            self.beta_plus_decay()
-        self.draw_token()
+        if card is None:
+            self.atomic_num -= 1
+        elif not card.stable:
+            self.query_stability()
 
     def beta_minus_decay(self):
         """Beta minus decay is the emission of an electron, thereby converting one nuetron
@@ -246,6 +259,9 @@ def event_listen():
                     SESSION.player.beta_plus_decay()
                 if event.key == KEY_FORCE_A_DECAY:
                     SESSION.player.alpha_decay()
+                if event.key == KEY_FORCE_RESTART:
+                    SESSION.player.atomic_num = 1
+                    SESSION.player.isotope_num = 1
 
 
 # PYGAME STATE MACHINE --------------------------------------------------------
