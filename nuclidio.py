@@ -7,6 +7,7 @@ DEBUG = True
 SCREEN_X = 1280
 SCREEN_Y = 768
 CARD_SIZE = 64
+CARD_TEXT_PADDING = 2
 # CONTROLS
 KEY_RIGHT = pygame.K_RIGHT
 KEY_UP = pygame.K_UP
@@ -20,10 +21,10 @@ COLOR_BLACK = (0, 0, 0)
 COLOR_HIGHLIGHT = (255, 63, 63)
 # FONTS
 pygame.font.init()
-FONT_TITLE = pygame.font.SysFont('DejaVu Sans', 24)
-FONT_MENU = pygame.font.SysFont('DejaVu Sans', 16)
-FONT_CARD_P = pygame.font.SysFont('DejaVu Sans', 20)
-FONT_CARD_S = pygame.font.SysFont('DejaVu Sans', 14)
+FONT_TITLE = pygame.font.SysFont('DejaVu Sans', 36)
+FONT_MENU = pygame.font.SysFont('DejaVu Sans', 24)
+FONT_CARD_P = pygame.font.SysFont('DejaVu Sans', 24)
+FONT_CARD_S = pygame.font.SysFont('DejaVu Sans', 20)
 # FILES
 FILE_NUCLIDES = 'nuclides.csv'
 FILE_ELEMENTS = 'elements.csv'
@@ -65,8 +66,13 @@ class IsotopeCard(object):
         y_coord = SCREEN_Y - ((self.atomic_num + 1) * CARD_SIZE)
         rect = pygame.Rect(x_coord, y_coord, CARD_SIZE, CARD_SIZE)
         fill_color = COLOR_WHITE if self.stable else COLOR_GREY
+        p_label = FONT_CARD_P.render(self.label, True, COLOR_BLACK)
+        s_label = FONT_CARD_S.render(str(self.isotope_num), True, COLOR_BLACK)
         pygame.draw.rect(DISPLAY, fill_color, rect, 0)
         pygame.draw.rect(DISPLAY, COLOR_BLACK, rect, 1)
+        DISPLAY.blit(p_label, (x_coord + CARD_TEXT_PADDING, y_coord + CARD_TEXT_PADDING))
+        DISPLAY.blit(s_label, (x_coord + CARD_SIZE - s_label.get_rect().right - CARD_TEXT_PADDING,
+                               y_coord + CARD_TEXT_PADDING))
 
 
 class IsotopeContainer(object):
@@ -94,7 +100,8 @@ class IsotopeContainer(object):
                 isotope_num = int(tokens[1])
                 ## TODO: swap proabilities with file vals
                 probabilities = (0.0, 0.0, 0.0) if int(tokens[2]) is 1 else (0.33, 0.33, 0.33)
-                self.isotope_cards.append(IsotopeCard(atomic_num, isotope_num, label_dict[atomic_num], probabilities))
+                self.isotope_cards.append(IsotopeCard(atomic_num, isotope_num,
+                                                      label_dict[atomic_num].strip(), probabilities))
 
     def draw_cards(self):
         for card in self.isotope_cards:
@@ -154,11 +161,8 @@ class PlayerToken(object):
 
         """
         self.isotope_num += 1
-        ## TODO: do this boy
         card = ISOTOPE_CONTAINER.find(self.atomic_num, self.isotope_num)
-        if card is None:
-            self.beta_minus_decay()
-        elif not card.stable:
+        if card is None or not card.stable:
             self.beta_minus_decay()
         self.draw_token()
 
@@ -167,11 +171,8 @@ class PlayerToken(object):
 
         """
         self.atomic_num += 1
-        ## TODO: don't do this boy
         card = ISOTOPE_CONTAINER.find(self.atomic_num, self.isotope_num)
-        if card is None:
-            self.beta_plus_decay()
-        elif not card.stable:
+        if card is None or not card.stable:
             self.beta_plus_decay()
         self.draw_token()
 
@@ -205,7 +206,7 @@ class PlaySession(object):
         self.start()
 
     # def menu(self):
-    #     title = FONT_TITLE.render(u'NUCLID.IO', 1, COLOR_WHITE)
+    #     title = FONT_TITLE.render(u'NUCLID.IO', True, COLOR_WHITE)
     #     DISPLAY.blit(title, (0, 0))
 
     def start(self):
