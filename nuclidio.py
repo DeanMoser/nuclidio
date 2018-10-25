@@ -1,5 +1,5 @@
-import pygame
 import numpy as np
+import pygame
 
 # SETTINGS  -------------------------------------------------------------------
 DEBUG = True
@@ -15,6 +15,7 @@ KEY_FORCE_BM_DECAY = pygame.K_m
 KEY_FORCE_BP_DECAY = pygame.K_p
 KEY_FORCE_A_DECAY = pygame.K_a
 KEY_FORCE_RESTART = pygame.K_r
+KEY_FORCE_SAFE = pygame.K_s
 # COLORS
 COLOR_WHITE = (255, 255, 255)
 COLOR_GREY = (200, 200, 200)
@@ -31,6 +32,8 @@ FONT_CARD_S = pygame.font.SysFont('DejaVu Sans', 20)
 # FILES
 FILE_NUCLIDES = 'nuclides.csv'
 FILE_ELEMENTS = 'elements.csv'
+# ENUM
+MY_EVENTS = {'query_stability': pygame.USEREVENT + 1}
 
 
 # PYGAME INIT -----------------------------------------------------------------
@@ -142,6 +145,10 @@ class PlayerToken(object):
         Determine which of these does occur and move the player. To be called after a player move.
 
         """
+        ## TODO: pass card in as parameter and handle multi-jump scenario
+        ## TODO: fix intermediate unstable location and multi-jump bug
+        if self.safe:
+            return
         this_elem = ISOTOPE_CONTAINER.find(self.atomic_num, self.isotope_num)
         if this_elem is not None and not this_elem.stable:
             prob = np.random.random()
@@ -154,9 +161,6 @@ class PlayerToken(object):
                 iter += 1
             # print(iter)
             # print(prob, prob_windows)
-            ## TODO: render intermediate unstable location with unsafe color for small time
-            self.safe = False
-            pygame.time.wait(500)
             if iter == 0:
                 self.beta_minus_decay()
             elif iter == 1:
@@ -165,7 +169,8 @@ class PlayerToken(object):
                 self.alpha_decay()
             else:
                 print('safe')
-            self.safe = True
+                print(self)
+                self.safe = True
 
     def add_nuetron(self):
         """Nuetron bombardment results in increasing the isotope, thereby moving 'right' on the board.
@@ -176,7 +181,8 @@ class PlayerToken(object):
         if card is None:
             self.isotope_num -= 1
         elif not card.stable:
-            self.query_stability()
+            self.safe = False
+            pygame.time.set_timer(MY_EVENTS['query_stability'], 500)
 
     def add_proton(self):
         """Proton bombardment results in increasing the atomic number, thereby moving 'up' on the board.
@@ -187,7 +193,8 @@ class PlayerToken(object):
         if card is None:
             self.atomic_num -= 1
         elif not card.stable:
-            self.query_stability()
+            self.safe = False
+            pygame.time.set_timer(MY_EVENTS['query_stability'], 500)
 
     def beta_minus_decay(self):
         """Beta minus decay is the emission of an electron, thereby converting one nuetron
@@ -245,23 +252,31 @@ def event_listen():
         # Detect quit
         if event.type == pygame.QUIT:
             pygame.quit()
+        # Detect timed event
+        elif event.type == MY_EVENTS['query_stability']:
+            SESSION.player.query_stability()
         # Detect input
-        if event.type == pygame.KEYDOWN:
+        elif event.type == pygame.KEYDOWN:
             if event.key == KEY_RIGHT:
-                SESSION.player.add_nuetron()
-            if event.key == KEY_UP:
-                SESSION.player.add_proton()
+                if SESSION.player.safe:
+                    SESSION.player.add_nuetron()
+            elif event.key == KEY_UP:
+                if SESSION.player.safe:
+                    SESSION.player.add_proton()
             # DEBUG ops
-            if DEBUG:
+            elif DEBUG:
                 if event.key == KEY_FORCE_BM_DECAY:
                     SESSION.player.beta_minus_decay()
-                if event.key == KEY_FORCE_BP_DECAY:
+                elif event.key == KEY_FORCE_BP_DECAY:
                     SESSION.player.beta_plus_decay()
-                if event.key == KEY_FORCE_A_DECAY:
+                elif event.key == KEY_FORCE_A_DECAY:
                     SESSION.player.alpha_decay()
-                if event.key == KEY_FORCE_RESTART:
+                elif event.key == KEY_FORCE_RESTART:
                     SESSION.player.atomic_num = 1
                     SESSION.player.isotope_num = 1
+                    SESSION.player.safe = True
+                elif event.key == KEY_FORCE_SAFE:
+                    SESSION.player.safe = True
 
 
 # PYGAME STATE MACHINE --------------------------------------------------------
